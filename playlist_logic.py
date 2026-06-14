@@ -60,22 +60,30 @@ def normalize_song(raw: Song) -> Song:
 def classify_song(song: Song, profile: Dict[str, object]) -> str:
     """Return a mood label given a song and user profile."""
     energy = song.get("energy", 0)
-    genre = song.get("genre", "")
-    title = song.get("title", "")
+    genre = str(song.get("genre", ""))
+    title = str(song.get("title", ""))
 
-    hype_min_energy = profile.get("hype_min_energy", 7)
-    chill_max_energy = profile.get("chill_max_energy", 3)
-    favorite_genre = profile.get("favorite_genre", "")
+    hype_min = profile.get("hype_min_energy", 7)
+    chill_max = profile.get("chill_max_energy", 3)
+    favorite = profile.get("favorite_genre", "")
 
-    hype_keywords = ["rock", "punk", "party"]
-    chill_keywords = ["lofi", "ambient", "sleep"]
+    # hype_genres matches against genre; chill_title_words matches against title
+    hype_genres = ["rock", "punk", "party"]
+    chill_title_words = ["lofi", "ambient", "sleep"]
 
-    is_hype_keyword = any(k in genre for k in hype_keywords)
-    is_chill_keyword = any(k in title.lower() for k in chill_keywords)
+    is_hype = (
+        energy >= hype_min
+        or genre == favorite
+        or any(k in genre for k in hype_genres)
+    )
+    is_chill = (
+        energy <= chill_max
+        or any(k in title.lower() for k in chill_title_words)
+    )
 
-    if genre == favorite_genre or energy >= hype_min_energy or is_hype_keyword:
+    if is_hype:
         return "Hype"
-    if energy <= chill_max_energy or is_chill_keyword:
+    if is_chill:
         return "Chill"
     return "Mixed"
 
@@ -101,7 +109,7 @@ def merge_playlists(a: PlaylistMap, b: PlaylistMap) -> PlaylistMap:
     """Merge two playlist maps into a new map."""
     merged: PlaylistMap = {}
     for key in set(list(a.keys()) + list(b.keys())):
-        merged[key] = a.get(key, [])
+        merged[key] = list(a.get(key, []))  # copy so we don't mutate a's lists
         merged[key].extend(b.get(key, []))
     return merged
 
